@@ -1,0 +1,31 @@
+#An container application to build your application
+name: app
+type: java:8
+disk: 512
+size: S
+
+relationships:
+  tomcat: tomcat:http
+
+mounts:
+   '/webapps':
+        source: local
+        source_path: application
+
+hooks:
+  build: |
+    mvn dependency:go-offline
+    mvn clean package
+    mkdir -p .m2/
+    # We should provide that folder in an environment variable.
+    cp -R /mnt/cache/maven .m2/repository
+
+  deploy: |
+    # Make sure we are using the local repository.
+    export MAVEN_OPTS="-Dmaven.repo.local=$PLATFORM_APP_DIR/.m2/repository"
+    mvn \
+      --offline \
+      -Dtomcat.username=admin \
+      -Dtomcat.password=$PLATFORM_PROJECT_ENTROPY \
+      -Dmaven.tomcat.url=$(./tomcat-url)/manager/text \
+      tomcat7:redeploy-only
